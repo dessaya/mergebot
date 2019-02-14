@@ -8,6 +8,13 @@ import time
 import os
 import re
 import platform
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('pull_request_url', help="PR URL. Eg: https://github.com/owner/repo/pull/1234")
+parser.add_argument('-t', '--commit_title', help="Commit title. Default: 'Merge <branch name> [ok:reviewer+mergebot]'")
+parser.add_argument('-a', '--any_author', help="Allow merging other author's PRs", action="store_true")
+args = parser.parse_args()
 
 def display(s):
     if platform.system() == 'Darwin':
@@ -43,8 +50,7 @@ def parse_github_url(github_url):
     return domain, repo, pr
 
 try:
-    github_url = sys.argv[1]
-    DOMAIN, REPO, PR = parse_github_url(github_url)
+    DOMAIN, REPO, PR = parse_github_url(args.pull_request_url)
 except (IndexError, ValueError):
     error(f'usage: {sys.argv[0]} <pull request url>')
     info(f'    example: {sys.argv[0]} https://github.com/owner/repo/pull/1234')
@@ -86,7 +92,7 @@ def merge(commit_title, sha):
             'sha': sha,
             'commit_message': '',
             'merge_method': 'squash',
-        }),
+        }).encode('utf8'),
         method='PUT'
     )
 
@@ -111,7 +117,7 @@ while True:
     info(f"mergeable_state: {mergeable_state}")
     info(f"approvers: {approvers}")
 
-    if author != user:
+    if author != user and not args.any_author:
         error(f'You are not logged in as PR author ({author} != {user}). Mergebot out.', True)
         break
 
@@ -139,12 +145,12 @@ while True:
     if mergeable_state == 'dirty':
         error('You have merge conflicts!', True)
 
-    title = f'Merge {branch} [ok:{"+".join((approvers + ["mergebot"])[:2])}]'
-    info(f'Merge commit title will be: {title} ...')
-    if mergeable:
+    commit_title = args.commit_title or f'Merge {branch} [ok:{"+".join((approvers + ["mergebot"])[:2])}]'
+    info(f'Merge commit title will be: {commit_title}')
+    if mergeable and mergeable_state in ('has_hooks', 'clean'):
         ok(f'PR is mergeable!')
         info(f'Merging now...')
-        r = merge(commit_title=title, sha=sha)
+        r = merge(commit_title=commit_title, sha=sha)
         if r.get('merged', False) is True:
             ok("PR has been merged. Have a nice day!", True)
         else:
