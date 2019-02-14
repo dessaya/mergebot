@@ -10,20 +10,32 @@ import re
 import platform
 import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument('pull_request_url', help="PR URL. Eg: https://github.com/owner/repo/pull/1234")
-parser.add_argument('-t', '--commit_title', help="Commit title. Default: 'Merge <branch name> [ok:reviewer+mergebot]'")
-parser.add_argument('-a', '--any_author', help="Allow merging other author's PRs", action="store_true")
+parser = argparse.ArgumentParser(
+    description='Periodically poll a Github pull request and merge it automatically if all checks pass.'
+)
+parser.add_argument(
+        'pull_request_url',
+        help="Pull request URL. Eg: https://github.com/owner/repo/pull/1234",
+)
+parser.add_argument(
+        '-t', '--commit-title',
+        help="Commit title. Default: 'Merge <branch name> [ok:reviewer+mergebot]'",
+)
+parser.add_argument(
+        '-a', '--any-author',
+        help="Allow merging other author's PRs",
+        action="store_true",
+)
 args = parser.parse_args()
 
-def display(s):
+def display_notification(s):
     if platform.system() == 'Darwin':
         os.system(f"""osascript -e 'display notification "{s}" with title "Mergebot"'""")
 
 def log(s, color, notify=False):
     print(color + s + '\033[0m')
     if notify:
-        display(s)
+        display_notification(s)
 
 def ok(s, notify=False):
     log(s, '\033[0;32m', notify)
@@ -52,8 +64,8 @@ def parse_github_url(github_url):
 try:
     DOMAIN, REPO, PR = parse_github_url(args.pull_request_url)
 except (IndexError, ValueError):
-    error(f'usage: {sys.argv[0]} <pull request url>')
-    info(f'    example: {sys.argv[0]} https://github.com/owner/repo/pull/1234')
+    parser.print_usage()
+    error(f'Failed to parse pull request URL. It should be something like https://github.com/owner/repo/pull/1234')
     sys.exit(1)
 
 try:
