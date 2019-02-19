@@ -138,21 +138,31 @@ while True:
         break
 
     statuses = statuses_get(sha)
+    # Keep the latest status for each context
+    statuses = [list(v)[-1] for k, v in itertools.groupby(
+        sorted(statuses, key=lambda s: (s['context'], s['updated_at'])),
+        lambda s: s['context'],
+    )]
+    # group by state (success, pending, failure, ...)
     grouped_statuses = dict(
         (k, list(v))
         for k, v in itertools.groupby(
-            sorted(
-                statuses,
-                key=lambda s: s['state'],
-            ),
+            sorted(statuses, key=lambda s: s['state']),
             lambda s: s['state'],
         )
     )
+
     failures = grouped_statuses.get('error', []) + grouped_statuses.get('failure', [])
     if len(failures) > 0:
-        warn("Some checks were not successful", True)
-        for f in failures:
-            warn(f"    {f['context']} ({f['target_url']})")
+        error("Some checks were not successful", True)
+        for check in failures:
+            error(f"    {check['context']} ({check['target_url'] or check['description']})")
+
+    pending = grouped_statuses.get('pending', [])
+    if len(pending) > 0:
+        warn("Pending checks:")
+        for check in pending:
+            warn(f"    {check['context']} ({check['target_url'] or check['description']})")
 
     if mergeable_state == 'dirty':
         error('You have merge conflicts!', True)
