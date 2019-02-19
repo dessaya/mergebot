@@ -133,7 +133,7 @@ def list_checks(checks, show, message, display_required):
     if len(checks) > 0:
         show(message, display_required and any(c['required'] for c in checks))
         for c in checks:
-            show(f"    {c['context']} {'(Required) ' if c['required'] else ''}({c['target_url'] or c['description']})")
+            show(f"    {c['context']} {'[Required] ' if c['required'] else ''}({c['target_url'] or c['description']})")
 
 user = request('/user')['login']
 info(f'Logged in as {user}')
@@ -151,6 +151,7 @@ while True:
 
     info(f"author: {author}")
     info(f"branch: {branch}")
+    info(f"commit sha: {sha}")
     info(f"state: {state}")
     info(f"mergeable: {mergeable}")
     info(f"mergeable_state: {mergeable_state}")
